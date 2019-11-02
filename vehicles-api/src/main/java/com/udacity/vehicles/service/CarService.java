@@ -14,13 +14,22 @@ import org.springframework.stereotype.Service;
 public class CarService {
 
     private final CarRepository repository;
+    private WebClient mapsWebClient;
+    private WebClient pricingWebClient;
 
-    public CarService(CarRepository repository) {
+    @Autowired
+    public CarService(
+            CarRepository repository,
+            @Qualifier("maps") WebClient mapsWebClient,
+            @Qualifier("pricing") WebClient pricingWebClient
+    ) {
         /**
          * TODO: Add the Maps and Pricing Web Clients you create
          *   in `VehiclesApiApplication` as arguments and set them here.
          */
         this.repository = repository;
+        this.mapsWebClient = mapsWebClient;
+        this.pricingWebClient = pricingWebClient;
     }
 
     /**
@@ -51,8 +60,17 @@ public class CarService {
          * Note: The car class file uses @transient, meaning you will need to call
          *   the pricing service each time to get the price.
          */
+        Mono<Price> priceMono = pricingWebClient
+                .get()
+                .uri("/{id}", id)
+                .retrieve()
+                .bodyToMono(Price.class);
 
-
+        priceMono.subscribe(price -> {
+            car.setPrice(price);
+        }, error -> {
+            System.out.println("Price service is down." + error);
+        });
         /**
          * TODO: Use the Maps Web client you create in `VehiclesApiApplication`
          *   to get the address for the vehicle. You should access the location
@@ -61,6 +79,21 @@ public class CarService {
          * Note: The Location class file also uses @transient for the address,
          * meaning the Maps service needs to be called each time for the address.
          */
+        Mono<Adress> addressMono = mapsWebClient
+                .get()
+                .url(uriBuilder -> uriBuilder
+                        .path("/")
+                        .queryParam("lat", car.getLocation().getLat())
+                        .queryParam("lon", car.getLocation().getLon())
+                        .build()
+                )
+                .retrieve();
+
+        addressMono.subscribe(location -> {
+            car.setLocation(location);
+        }, error -> {
+            System.out.println("Map service is down " + error);
+        });
 
 
         return car;
@@ -72,17 +105,17 @@ public class CarService {
      * @return the new/updated car is stored in the repository
      */
     public Car save(Car car) {
-        if (car.getId() != null) {
-            return repository.findById(car.getId())
-                    .map(carToBeUpdated -> {
-                        carToBeUpdated.setDetails(car.getDetails());
-                        carToBeUpdated.setLocation(car.getLocation());
-                        return repository.save(carToBeUpdated);
-                    }).orElseThrow(CarNotFoundException::new);
-        }
+        Long carId = car.getId();
 
-        return repository.save(car);
-    }
+        Optional<Car> optCar = repository.findById(carId);
+
+        if (optCar.isPresent()) {
+            // Update car
+            repository.update(optCar);
+        } else {
+            // Create a new car
+            repository.save(optCar);
+        }
 
     /**
      * Deletes a given car by ID
@@ -94,11 +127,12 @@ public class CarService {
          *   If it does not exist, throw a CarNotFoundException
          */
 
+        Car carToDelete = repository.findById(id).orElseThrow(CarNotFoundException::new);
 
         /**
          * TODO: Delete the car from the repository.
          */
-
+        repository.deleteById(carToDelete.getId());
 
     }
 }
