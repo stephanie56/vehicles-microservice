@@ -105,17 +105,17 @@ public class CarService {
      * @return the new/updated car is stored in the repository
      */
     public Car save(Car car) {
-        Long carId = car.getId();
-
-        Optional<Car> optCar = repository.findById(carId);
-
-        if (optCar.isPresent()) {
-            // Update car
-            repository.update(optCar);
-        } else {
-            // Create a new car
-            repository.save(optCar);
+        if (car.getId() != null) {
+            return repository.findById(car.getId())
+                    .map(carToBeUpdated -> {
+                        carToBeUpdated.setDetails(car.getDetails());
+                        carToBeUpdated.setLocation(car.getLocation());
+                        return repository.save(carToBeUpdated);
+                    }).orElseThrow(CarNotFoundException::new);
         }
+
+        return repository.save(car);
+    }
 
     /**
      * Deletes a given car by ID
@@ -127,12 +127,12 @@ public class CarService {
          *   If it does not exist, throw a CarNotFoundException
          */
 
-        Car carToDelete = repository.findById(id).orElseThrow(CarNotFoundException::new);
+        Car carToBeDeleted = repository.findById(id).orElseThrow(CarNotFoundException::new);
 
         /**
          * TODO: Delete the car from the repository.
          */
-        repository.deleteById(carToDelete.getId());
+        repository.deleteById(carToBeDeleted.getId());
 
     }
 }
