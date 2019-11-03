@@ -5,10 +5,12 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
 
 import com.udacity.vehicles.domain.car.Car;
+import com.udacity.vehicles.service.CarNotFoundException;
 import com.udacity.vehicles.service.CarService;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 
@@ -63,8 +65,8 @@ class CarController {
          * TODO: Use the `assembler` on that car and return the resulting output.
          *   Update the first line as part of the above implementing.
          */
-        Optional<Car> optCar = carService.findById(id).orElseThrow(CarNotFoundException:new);
-        return assembler.toResource(optCar);
+        Car car = carService.findById(id);
+        return assembler.toResource(car);
     }
 
     /**
